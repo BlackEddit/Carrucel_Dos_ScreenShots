@@ -3,40 +3,118 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Carousel Link</title>
+  <title>HDI Seguros - Centro de Monitoreo Dynatrace</title>
   <style>
-    body { margin:0; font-family: system-ui, sans-serif; background:#0b0f13; color:#eee; }
-    header { padding:10px 16px; display:flex; justify-content:space-between; align-items:center; }
-    .wrap { display:grid; place-items:center; height: calc(100vh - 60px); position: relative; }
+    :root {
+      --hdi-green: #00A651;
+      --hdi-red: #E31E24;
+      --hdi-dark: #1a1a1a;
+      --hdi-light: #ffffff;
+      --hdi-gray: #666666;
+    }
+    
+    body { 
+      margin: 0; 
+      font-family: 'Arial', sans-serif; 
+      background: linear-gradient(135deg, #0a0a0a 0%, var(--hdi-dark) 100%); 
+      color: var(--hdi-light); 
+    }
+    
+    header { 
+      padding: 15px 25px; 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      background: rgba(0, 166, 81, 0.05);
+      border-bottom: 2px solid var(--hdi-green);
+    }
+    
+    .hdi-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    .hdi-brand {
+      font-size: 24px;
+      font-weight: bold;
+      color: var(--hdi-green);
+    }
+    
+    .hdi-subtitle {
+      font-size: 12px;
+      color: var(--hdi-gray);
+      margin-top: 2px;
+    }
+    
+    .wrap { 
+      display: grid; 
+      place-items: center; 
+      height: calc(100vh - 80px); 
+      position: relative; 
+    }
     img {
-      width: 100vw;
+      width: 98vw;
       height: auto;
-      max-width: 100vw;
-      max-height: 100vh;
-      border-radius: 0;
-      box-shadow: none;
+      max-width: 98vw;
+      max-height: calc(100vh - 100px);
+      border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0, 166, 81, 0.1);
       background: #111;
       display: block;
       margin: 0 auto;
       object-fit: contain;
+      border: 1px solid rgba(0, 166, 81, 0.2);
     }
-    .pill { font-size:12px; opacity:.7 }
-    .controls { display:flex; gap:8px; }
-    button { background:#1e2836; color:#d2f7d0; border:1px solid #243246; padding:8px 12px; border-radius:10px; cursor:pointer; }
-    button:disabled { opacity:.5; cursor:not-allowed; }
+    
+    .status-pill { 
+      font-size: 11px; 
+      padding: 4px 10px;
+      background: rgba(0, 166, 81, 0.1);
+      border: 1px solid rgba(0, 166, 81, 0.3);
+      border-radius: 12px;
+      color: var(--hdi-light);
+    }
+    
+    .controls { 
+      display: flex; 
+      gap: 10px; 
+      align-items: center;
+    }
+    
+    button { 
+      background: var(--hdi-green); 
+      color: white; 
+      border: none; 
+      padding: 8px 16px; 
+      border-radius: 6px; 
+      cursor: pointer; 
+      font-weight: 500;
+      transition: background 0.2s ease;
+    }
+    
+    button:hover {
+      background: #008a43;
+    }
+    
+    button:disabled { 
+      opacity: 0.5; 
+      cursor: not-allowed; 
+    }
     
     /* Dashboard info overlay */
     .dashboard-info {
       position: absolute;
       bottom: 20px;
       right: 20px;
-      background: rgba(0,0,0,0.5);
-      padding: 10px 15px;
-      border-radius: 10px;
-      font-size: 14px;
-      opacity: 0.8;
+      background: rgba(0, 166, 81, 0.9);
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      opacity: 0.9;
       z-index: 100;
       transition: opacity 0.3s;
+      border: 1px solid rgba(0, 166, 81, 0.3);
     }
     
     .dashboard-info:hover {
@@ -50,26 +128,28 @@
       left: 0;
       width: 100vw;
       height: 100vh;
-      background: #0b0f13;
+      background: linear-gradient(135deg, #0a0a0a 0%, var(--hdi-dark) 100%);
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
       z-index: 1000;
-      color: #eee;
+      color: var(--hdi-light);
     }
     
     .loading-text {
-      font-size: 24px;
+      font-size: 22px;
       margin-bottom: 20px;
       text-align: center;
+      color: var(--hdi-green);
+      font-weight: 500;
     }
     
     .spinner {
       width: 50px;
       height: 50px;
-      border: 3px solid #1e2836;
-      border-top: 3px solid #d2f7d0;
+      border: 3px solid rgba(0, 166, 81, 0.2);
+      border-top: 3px solid var(--hdi-green);
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
@@ -135,9 +215,25 @@
   </style>
 </head>
 <body>
+  <!-- Header HDI -->
+  <header>
+    <div class="hdi-logo">
+      <div>
+        <div class="hdi-brand">HDI SEGUROS</div>
+        <div class="hdi-subtitle">Centro de Monitoreo • Dynatrace</div>
+      </div>
+    </div>
+    
+    <div class="controls">
+      <div class="status-pill">
+        <span id="live-status">EN VIVO</span> | <span id="auto-refresh">AUTOMÁTICO</span>
+      </div>
+    </div>
+  </header>
+
   <!-- Pantalla de carga inicial -->
   <div id="loading-screen" class="loading-screen">
-    <div class="loading-text">🔄 Cargando Dashboards...</div>
+    <div class="loading-text">Cargando Dashboards...</div>
     <div class="spinner"></div>
     <div id="progress-info" class="dashboard-count">
       Capturando screenshots de los dashboards<br>
@@ -147,7 +243,7 @@
   
   <!-- Información de dashboard actual -->
   <div id="dashboard-info" class="dashboard-info hidden">
-    Dashboard: <span id="current-name">-</span> (<span id="current-index">0</span>/<span id="total-count">0</span>)
+    Dashboard: <span id="current-name">-</span> (<span id="current-index">0</span>/<span id="total-count">2</span>)
     <br>
     Última actualización: <span id="last-updated">-</span>
   </div>
@@ -159,7 +255,7 @@
   
   <!-- Contenedor principal -->
   <div class="wrap">
-    <img id="frame" alt="slide" />
+    <img id="frame" alt="Dashboard HDI Seguros" />
   </div>
   
   <!-- Error message container -->
