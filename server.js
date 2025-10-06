@@ -6,7 +6,7 @@ import fs from 'fs'; // Manejo de archivos
 import path from 'path'; // Manejo de rutas
 import { fileURLToPath } from 'url'; // Utilidad para rutas en ES Modules
 import puppeteer from 'puppeteer-core'; // Navegador automatizado para capturas
-// import chromium from '@sparticuz/chromium'; // Usando Chrome local en su lugar
+import chromium from '@sparticuz/chromium'; // Para producción en Render
 import dotenv from 'dotenv'; // Para leer variables de entorno
 import { capturarConReintentos, VIEWPORT } from './sources/modules/capturador-imagenes.js'; // Módulo de captura y procesamiento de imágenes
 dotenv.config();
@@ -264,19 +264,48 @@ async function captureOne(index) {
   try {
     console.log('🌐 Iniciando navegador para captura individual...');
     
-    browser = await puppeteer.launch({
-      args: [
-        '--max-old-space-size=400',
-        '--disable-dev-shm-usage',
-        '--disable-gpu',
-        '--no-sandbox',
-        '--disable-setuid-sandbox'
-      ],
-      headless: true,
-      // Usar Chrome local que funciona
-      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-      protocolTimeout: 180000,
-    });
+    // Detectar entorno: desarrollo (local) vs producción (Render/Heroku/etc)
+    const isProduction = process.env.NODE_ENV === 'production' || process.env.RENDER || process.env.RAILWAY_ENVIRONMENT || !process.env.LOCALAPPDATA;
+    
+    let browserConfig;
+    if (isProduction) {
+      // Configuración para producción (Render)
+      console.log('🌍 Entorno de producción detectado - usando Chromium bundled');
+      browserConfig = {
+        args: [
+          ...chromium.args,
+          '--max-old-space-size=400',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor'
+        ],
+        defaultViewport: chromium.defaultViewport,
+        executablePath: await chromium.executablePath(),
+        headless: chromium.headless,
+        ignoreHTTPSErrors: true,
+        protocolTimeout: 180000,
+      };
+    } else {
+      // Configuración para desarrollo (Chrome local)
+      console.log('💻 Entorno de desarrollo detectado - usando Chrome local');
+      browserConfig = {
+        args: [
+          '--max-old-space-size=400',
+          '--disable-dev-shm-usage',
+          '--disable-gpu',
+          '--no-sandbox',
+          '--disable-setuid-sandbox'
+        ],
+        headless: true,
+        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        protocolTimeout: 180000,
+      };
+    }
+    
+    browser = await puppeteer.launch(browserConfig);
 
     // Intentar captura con retries
     const result = await captureWithRetries(browser, target);
