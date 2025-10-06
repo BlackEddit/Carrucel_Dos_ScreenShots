@@ -1,0 +1,21 @@
+{
+  "name": "carousel-link",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node --max-old-space-size=512 server.js",
+    "dev": "node --max-old-space-size=512 server.js",
+    "debug": "node --inspect server.js"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^121.0.0",
+    "dotenv": "^17.2.1",
+    "express": "^4.19.2",
+    "puppeteer-core": "^21.0.0",
+    "sharp": "^0.34.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
