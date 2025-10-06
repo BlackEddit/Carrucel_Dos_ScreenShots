@@ -40,7 +40,7 @@ console.log(`🔧 Dashboard 1: mitad superior | Dashboard 2: mitad inferior`);
 
 // 2) Intervalo de refresco de capturas (minutos)
 // Cada cuánto tiempo se actualizan las capturas
-const CAPTURE_EVERY_MIN = 30; // 30 minutos para 12 dsashboards
+const CAPTURE_EVERY_MIN = 2; // 2 minutos para capturas rápidas (testing)
 
 // 3) Timeout de carga por página (ms) - REDUCIDO para captura inicial más rápida
 // Tiempo máximo para que Puppeteer navegue a la página
@@ -48,7 +48,7 @@ const PAGE_TIMEOUT_MS = 90_000; // 1.5 minutos para dashboards pesados
 
 // 4) Configuración de captura SECUENCIAL optimizada para 512MB RAM
 const MAX_CONCURRENT_CAPTURES = 1; // Solo 1 dashboard por vez para evitar OOM
-const WAIT_TIME_PER_DASHBOARD = 90000; // 90 segundos - más tiempo para que carguen completamente
+const WAIT_TIME_PER_DASHBOARD = 10000; // 10 segundos - igual que en test-capture.js
 
 // 6) Opcional: headers/cookies de sesión (solo si tu seguridad lo permite)
 // Si necesitas autenticación, agrega aquí tus cookies o headers
