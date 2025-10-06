@@ -48,7 +48,7 @@ const PAGE_TIMEOUT_MS = 90_000; // 1.5 minutos para dashboards pesados
 
 // 4) Configuración de captura SECUENCIAL optimizada para 512MB RAM
 const MAX_CONCURRENT_CAPTURES = 1; // Solo 1 dashboard por vez para evitar OOM
-const WAIT_TIME_PER_DASHBOARD = 10000; // 10 segundos - igual que en test-capture.js
+const WAIT_TIME_PER_DASHBOARD = 20000; // 20 segundos - aumentado para Dynatrace complejo
 
 // 6) Opcional: headers/cookies de sesión (solo si tu seguridad lo permite)
 // Si necesitas autenticación, agrega aquí tus cookies o headers

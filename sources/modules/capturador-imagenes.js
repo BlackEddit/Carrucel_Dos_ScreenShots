@@ -106,18 +106,57 @@ async function capturarConReintentos(browser, target, waitTime, shotsDir, auth =
       // Esperar tiempo base de carga
       await new Promise(res => setTimeout(res, waitTime));
       
-      // Verificar si hay elementos de loading visibles y esperar adicional
+      // MEJORA: Espera inteligente específica para Dynatrace
+      console.log(`🔍 Verificando elementos críticos de Dynatrace para ${target.id}...`);
+      
+      // Esperar hasta que los elementos críticos estén presentes y cargados
       try {
-        const loadingElements = await page.$$eval('[class*="loading"], [class*="Loading"], .dt-loading', 
-          elements => elements.length
+        // Esperar a que aparezcan elementos específicos de Dynatrace
+        await page.waitForFunction(() => {
+          // Verificar que hay contenido visible (no solo loading)
+          const charts = document.querySelectorAll('[class*="chart"], [class*="Chart"], [class*="tile"], [class*="Tile"], [data-testid*="chart"], [data-testid*="tile"]');
+          const svgElements = document.querySelectorAll('svg');
+          const canvasElements = document.querySelectorAll('canvas');
+          
+          // Verificar que no hay spinners/loading activos
+          const loadingElements = document.querySelectorAll('[class*="loading"], [class*="Loading"], [class*="spinner"], [class*="Spinner"], .dt-loading');
+          const activeLoading = Array.from(loadingElements).filter(el => {
+            const style = window.getComputedStyle(el);
+            return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+          });
+          
+          console.log(`[DEBUG] Charts: ${charts.length}, SVGs: ${svgElements.length}, Canvas: ${canvasElements.length}, Loading: ${activeLoading.length}`);
+          
+          // Debe haber contenido visual y no elementos de loading activos
+          return (charts.length > 0 || svgElements.length > 5 || canvasElements.length > 0) && activeLoading.length === 0;
+        }, { timeout: 45000 }); // 45 segundos máximo
+        
+        console.log(`✅ Elementos de Dynatrace detectados para ${target.id}`);
+        
+      } catch (e) {
+        console.log(`⚠️ Timeout esperando elementos específicos, continuando con captura de ${target.id}`);
+      }
+      
+      // Espera adicional para asegurar renderizado completo de gráficos
+      console.log(`⏳ Espera adicional de renderizado para ${target.id}... (15s)`);
+      await new Promise(res => setTimeout(res, 15000));
+      
+      // Verificar una vez más si hay elementos de loading visibles
+      try {
+        const stillLoading = await page.$$eval('[class*="loading"], [class*="Loading"], [class*="spinner"], [class*="Spinner"], .dt-loading', 
+          elements => elements.filter(el => {
+            const style = window.getComputedStyle(el);
+            return style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0';
+          }).length
         );
         
-        if (loadingElements > 0) {
-          console.log(`⏳ ${target.id} (${target.section}) todavía cargando, esperando 30s adicionales...`);
-          await new Promise(res => setTimeout(res, 30000));
+        if (stillLoading > 0) {
+          console.log(`⏳ ${target.id} (${target.section}) aún tiene ${stillLoading} elementos cargando, esperando 20s adicionales...`);
+          await new Promise(res => setTimeout(res, 20000));
         }
       } catch (e) {
         // Si falla la evaluación, continuar normalmente
+        console.log(`⚠️ Error verificando loading elements para ${target.id}, continuando...`);
       }
       
       // NUEVA LÓGICA: Dividir la captura según la sección
