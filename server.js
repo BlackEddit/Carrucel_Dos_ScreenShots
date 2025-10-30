@@ -12,7 +12,12 @@ import { capturarConReintentos, VIEWPORT } from './sources/modules/capturador-im
 dotenv.config();
 
 // DIAGNOSTICO: Registrar info del proceso al iniciar
-console.log('🔍 DIAGNÓSTICO - PID:', process.pid, 'UPTIME:', process.uptime().toFixed(2) + 's', 'TS:', new Date().toISOString());
+const now = new Date();
+console.log('🔍 DIAGNÓSTICO - PID:', process.pid, 'UPTIME:', process.uptime().toFixed(2) + 's');
+console.log('🕒 TIMESTAMP UTC:', now.toISOString());
+console.log('🌍 TIMESTAMP LOCAL:', now.toString());
+console.log('⏰ TIMEZONE OFFSET:', now.getTimezoneOffset(), 'minutos desde UTC');
+console.log('🌎 TIMEZONE:', Intl.DateTimeFormat().resolvedOptions().timeZone);
 
 // DIAGNOSTICO: Registrar eventos del proceso
 process.on('exit', code => console.log('⚠️ EXIT - Código:', code, 'TS:', new Date().toISOString()));
@@ -262,7 +267,9 @@ function saveLastCaptureState(index) {
 // ✨ NUEVO: Función para capturar UN SOLO dashboard - Incremental
 async function captureOne(index) {
   // DIAGNOSTICO: Registrar info antes de capturar
-  console.log(`🔍 CAPTURANDO DASHBOARD ${index+1}/${TARGETS.length} - PID: ${process.pid} - TS: ${new Date().toISOString()}`);
+  const captureTime = new Date();
+  console.log(`🔍 CAPTURANDO DASHBOARD ${index+1}/${TARGETS.length} - PID: ${process.pid}`);
+  console.log(`🕒 UTC: ${captureTime.toISOString()} | LOCAL: ${captureTime.toLocaleString('es-MX', {timeZone: 'America/Mexico_City'})} MX`);
   
   if (index < 0 || index >= TARGETS.length) {
     console.error(`❌ Índice inválido: ${index}, rango válido: 0-${TARGETS.length-1}`);
@@ -733,6 +740,77 @@ app.get('/api/cache-info', (req, res) => {
   }
 });
 
+// Endpoint para comparar zonas horarias
+app.get('/api/timezone', (req, res) => {
+  try {
+    const now = new Date();
+    const timezoneInfo = {
+      server: {
+        utc: now.toISOString(),
+        local: now.toString(),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        offset: now.getTimezoneOffset(),
+        timestamp: now.getTime()
+      },
+      formatted: {
+        utc: now.toUTCString(),
+        mexicoCity: now.toLocaleString('es-MX', {
+          timeZone: 'America/Mexico_City',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        }),
+        newYork: now.toLocaleString('en-US', {
+          timeZone: 'America/New_York',
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+          hour12: false
+        })
+      },
+      dashboardFiles: TARGETS.map(target => {
+        const imagePath = path.join(shotsDir, `${target.id}.png`);
+        if (fs.existsSync(imagePath)) {
+          const stats = fs.statSync(imagePath);
+          return {
+            id: target.id,
+            modified: {
+              utc: stats.mtime.toISOString(),
+              mexicoCity: stats.mtime.toLocaleString('es-MX', {
+                timeZone: 'America/Mexico_City',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: false
+              }),
+              ageMinutes: Math.round((now - stats.mtime) / 1000 / 60)
+            }
+          };
+        }
+        return { id: target.id, modified: null };
+      })
+    };
+    
+    res.json(timezoneInfo);
+  } catch (error) {
+    console.error('Error en /api/timezone:', error);
+    res.status(500).json({
+      error: 'Error obteniendo información de zona horaria',
+      message: error.message
+    });
+  }
+});
+
 // 📊 Nuevo endpoint para diagnóstico
 app.get('/api/diagnostics', (req, res) => {
   try {
@@ -752,15 +830,27 @@ app.get('/api/diagnostics', (req, res) => {
         path: imagePath,
         exists: fs.existsSync(imagePath),
         size: stats ? stats.size : 0,
-        modified: stats ? stats.mtime : null,
+        modified: stats ? {
+          utc: stats.mtime.toISOString(),
+          local: stats.mtime.toString(),
+          mexicoCity: stats.mtime.toLocaleString('es-MX', {timeZone: 'America/Mexico_City'}),
+          timestamp: stats.mtime.getTime()
+        } : null,
         age: stats ? (Date.now() - stats.mtime) / 1000 : null
       };
     });
     
-    // Obtener información del sistema
+    // Obtener información del sistema con zona horaria
+    const now = new Date();
     const diagnostics = {
       timestamp: Date.now(),
-      datetime: new Date().toISOString(),
+      datetime: {
+        utc: now.toISOString(),
+        local: now.toString(),
+        mexicoCity: now.toLocaleString('es-MX', {timeZone: 'America/Mexico_City'}),
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+        timezoneOffset: now.getTimezoneOffset()
+      },
       process: {
         pid: process.pid,
         uptime: process.uptime(),
@@ -768,7 +858,8 @@ app.get('/api/diagnostics', (req, res) => {
         versions: process.versions,
         env: {
           NODE_ENV: process.env.NODE_ENV,
-          PORT: process.env.PORT
+          PORT: process.env.PORT,
+          TZ: process.env.TZ
         }
       },
       capture: {
