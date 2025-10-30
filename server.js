@@ -1,5 +1,7 @@
 // BACKEND < Captura ScreenShots, cada 14 segundos con Puppeteer
 
+// CONFIGURAR ZONA HORARIA DE MÉXICO ANTES DE IMPORTAR OTROS MÓDULOS
+process.env.TZ = 'America/Mexico_City';
 
 import express from 'express'; // Framework para servidor web
 import fs from 'fs'; // Manejo de archivos
@@ -18,6 +20,39 @@ console.log('🕒 TIMESTAMP UTC:', now.toISOString());
 console.log('🌍 TIMESTAMP LOCAL:', now.toString());
 console.log('⏰ TIMEZONE OFFSET:', now.getTimezoneOffset(), 'minutos desde UTC');
 console.log('🌎 TIMEZONE:', Intl.DateTimeFormat().resolvedOptions().timeZone);
+
+// FUNCIONES DE TIEMPO CONSISTENTES PARA MÉXICO
+function getMexicoTime() {
+  const now = new Date();
+  return {
+    iso: now.toISOString(),
+    local: now.toLocaleString('es-MX', {
+      timeZone: 'America/Mexico_City',
+      year: 'numeric',
+      month: '2-digit', 
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false
+    }),
+    timestamp: now.getTime(),
+    mexicoOffset: -6 // UTC-6 (o UTC-5 en horario de verano)
+  };
+}
+
+function formatTimeForMexico(date) {
+  return date.toLocaleString('es-MX', {
+    timeZone: 'America/Mexico_City',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit', 
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+}
 
 // DIAGNOSTICO: Registrar eventos del proceso
 process.on('exit', code => console.log('⚠️ EXIT - Código:', code, 'TS:', new Date().toISOString()));
@@ -267,9 +302,9 @@ function saveLastCaptureState(index) {
 // ✨ NUEVO: Función para capturar UN SOLO dashboard - Incremental
 async function captureOne(index) {
   // DIAGNOSTICO: Registrar info antes de capturar
-  const captureTime = new Date();
+  const mexicoTime = getMexicoTime();
   console.log(`🔍 CAPTURANDO DASHBOARD ${index+1}/${TARGETS.length} - PID: ${process.pid}`);
-  console.log(`🕒 UTC: ${captureTime.toISOString()} | LOCAL: ${captureTime.toLocaleString('es-MX', {timeZone: 'America/Mexico_City'})} MX`);
+  console.log(`🕒 UTC: ${mexicoTime.iso} | MX: ${mexicoTime.local}`);
   
   if (index < 0 || index >= TARGETS.length) {
     console.error(`❌ Índice inválido: ${index}, rango válido: 0-${TARGETS.length-1}`);
@@ -738,6 +773,19 @@ app.get('/api/cache-info', (req, res) => {
       timestamp: new Date().toISOString()
     });
   }
+});
+
+// Endpoint simple para verificar hora
+app.get('/api/time', (req, res) => {
+  const mexicoTime = getMexicoTime();
+  res.json({
+    server: 'Carrusel HDI',
+    utc: mexicoTime.iso,
+    mexico: mexicoTime.local,
+    timestamp: mexicoTime.timestamp,
+    timezone: process.env.TZ || 'No configurada',
+    message: `Hora actual del servidor: ${mexicoTime.local} (México)`
+  });
 });
 
 // Endpoint para comparar zonas horarias

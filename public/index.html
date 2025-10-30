@@ -281,7 +281,7 @@
     const serverUptime = document.getElementById('server-uptime');
     const errorContainer = document.getElementById('error-container');
 
-    // Función para formatear fecha
+    // Función para formatear fecha con zona horaria de México
     function formatDate(dateString) {
       if (!dateString) return 'Desconocido';
       
@@ -290,17 +290,25 @@
       const diffMs = now - date;
       const diffMin = Math.floor(diffMs / 60000);
       
+      // Mostrar hora en zona horaria de México
+      const mexTime = date.toLocaleString('es-MX', {
+        timeZone: 'America/Mexico_City',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false
+      });
+      
       if (diffMin < 1) {
-        return 'Hace unos segundos';
+        return `Ahora (${mexTime})`;
       } else if (diffMin < 60) {
-        return `Hace ${diffMin} minuto${diffMin > 1 ? 's' : ''}`;
+        return `Hace ${diffMin}min (${mexTime})`;
       } else {
         const hours = Math.floor(diffMin / 60);
         if (hours < 24) {
-          return `Hace ${hours} hora${hours > 1 ? 's' : ''}`;
+          return `Hace ${hours}h (${mexTime})`;
         } else {
           const days = Math.floor(hours / 24);
-          return `Hace ${days} día${days > 1 ? 's' : ''}`;
+          return `Hace ${days}d (${mexTime})`;
         }
       }
     }

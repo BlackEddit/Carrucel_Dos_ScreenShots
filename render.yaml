@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: carrusel-dashboards
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: TZ
+        value: America/Mexico_City
+    autoDeploy: true
+    repo: https://github.com/BlackEddit/Carrucel_Dos_ScreenShots.git
+    branch: master
