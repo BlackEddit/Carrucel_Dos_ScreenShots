@@ -69,6 +69,21 @@ const AUTH = {
 
 // Inicializa el servidor Express y sirve archivos estáticos
 const app = express();
+
+// Headers anti-cache para imágenes de screenshots
+app.use('/shots', (req, res, next) => {
+  // Prevenir cache en navegador y proxies
+  res.set({
+    'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+    'Pragma': 'no-cache',
+    'Expires': '0',
+    'Surrogate-Control': 'no-store',
+    'Last-Modified': new Date().toUTCString(),
+    'ETag': `"${Date.now()}-${Math.random().toString(36).substr(2, 9)}"`
+  });
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Carpeta donde se guardan las capturas
@@ -413,7 +428,15 @@ try {
 }
 
 // Iniciar captura incremental con primera ronda
-const startCaptures = async () => {
+const startCaptures = async (forceRefresh = false) => {
+  // Si es regeneración forzada, capturar todo desde cero
+  if (forceRefresh) {
+    console.log('\n🔄 REGENERACIÓN FORZADA - Capturando todos los dashboards...');
+    await captureAll();
+    scheduleRotatingCaptures(0);
+    return;
+  }
+  
   // Si es un reinicio y ya tenemos dashboards, capturar solo uno y programar los siguientes
   if (lastState.lastIndex >= 0) {
     console.log(`🔄 REINICIO DETECTADO - Último dashboard capturado: ${lastState.lastIndex}`);
@@ -501,6 +524,47 @@ startCaptures();
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// Endpoint para forzar regeneración y limpiar cache
+app.get('/api/force-refresh', async (req, res) => {
+  try {
+    console.log('🔄 FORZANDO REGENERACIÓN - Eliminando imágenes cacheadas...');
+    
+    // Eliminar todas las imágenes existentes
+    TARGETS.forEach(target => {
+      const imagePath = path.join(shotsDir, `${target.id}.png`);
+      if (fs.existsSync(imagePath)) {
+        fs.unlinkSync(imagePath);
+        console.log(`🗑️  Eliminada imagen cacheada: ${target.id}.png`);
+      }
+    });
+    
+    // Resetear estado
+    captureInProgress = false;
+    captureProgress = 0;
+    successfulCaptures = 0;
+    failedCaptures = 0;
+    
+    // Forzar captura inmediata de todos los dashboards
+    console.log('📸 Iniciando captura forzada de todos los dashboards...');
+    startCaptures(true); // Pasar flag para indicar que es forzada
+    
+    res.json({
+      success: true,
+      message: 'Regeneración forzada iniciada',
+      timestamp: new Date().toISOString(),
+      dashboards: TARGETS.length
+    });
+    
+  } catch (error) {
+    console.error('❌ Error en regeneración forzada:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 
 // Endpoint que expone la lista actual de capturas para el front - PROGRESIVO
 app.get('/api/list', (req, res) => {
@@ -596,6 +660,76 @@ app.get('/api/status', (req, res) => {
   } catch (error) {
     console.error('Error en /api/status:', error);
     res.status(500).json({ error: 'Error interno del servidor', message: error.message });
+  }
+});
+
+// Endpoint para información de cache
+app.get('/api/cache-info', (req, res) => {
+  try {
+    const cacheInfo = TARGETS.map(target => {
+      const imagePath = path.join(shotsDir, `${target.id}.png`);
+      let fileInfo = null;
+      
+      if (fs.existsSync(imagePath)) {
+        const stats = fs.statSync(imagePath);
+        const ageInMinutes = (Date.now() - stats.mtime) / 1000 / 60;
+        
+        fileInfo = {
+          exists: true,
+          size: stats.size,
+          created: stats.birthtime,
+          modified: stats.mtime,
+          ageMinutes: Math.round(ageInMinutes * 100) / 100,
+          isStale: ageInMinutes > CAPTURE_EVERY_MIN + 1, // +1 minuto de tolerancia
+          currentTimestamp: Date.now(),
+          fileTimestamp: stats.mtime.getTime()
+        };
+      } else {
+        fileInfo = {
+          exists: false,
+          size: 0,
+          created: null,
+          modified: null,
+          ageMinutes: null,
+          isStale: true,
+          currentTimestamp: Date.now(),
+          fileTimestamp: null
+        };
+      }
+      
+      return {
+        dashboardId: target.id,
+        url: target.url,
+        section: target.section,
+        file: fileInfo
+      };
+    });
+    
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
+    res.json({
+      timestamp: new Date().toISOString(),
+      captureInterval: CAPTURE_EVERY_MIN,
+      dashboards: cacheInfo,
+      summary: {
+        total: TARGETS.length,
+        existing: cacheInfo.filter(d => d.file.exists).length,
+        stale: cacheInfo.filter(d => d.file.isStale).length,
+        fresh: cacheInfo.filter(d => !d.file.isStale).length
+      }
+    });
+    
+  } catch (error) {
+    console.error('Error en /api/cache-info:', error);
+    res.status(500).json({
+      error: 'Error obteniendo información de cache',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
